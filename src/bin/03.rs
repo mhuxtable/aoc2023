@@ -91,7 +91,16 @@ fn parse<F: Fn(char) -> bool>(
     }
 
     // Build another grid where all Digit cells are mapped to the whole number
-    // they represent
+    // they represent. e.g. in the following grid:
+    //
+    // 123
+    //
+    // The number 123 will be mapped to all three cells:
+    //
+    // 123 123 123
+    //
+    // This pre-processing step makes it easier to iterate around a symbol and
+    // find all adjacent numbers.
     let numbers = {
         let mut numbers = Grid::new(NumberAdjacent::None, width, height);
 
@@ -130,50 +139,82 @@ fn parse<F: Fn(char) -> bool>(
     (grid, symbols, numbers)
 }
 
+// iterate all numbers adjacent to a point, calling some function with each adjacent number.
+// Arguments are a grid, a number adjacency grid (where every cell contains the actual number
+// represented by that cell and its adjacent cells), the point around which to look (diagonally,
+// horizontally and vertically), and a callback to call with eligible numbers.
+//
+// For example, given the following grid:
+//
+// 123
+// 4*6
+// 789
+//
+// The number adjacency grid looks like
+//
+// 123 123 123
+//  4   0   6
+// 789 789 789
+//
+// Calling this function at the point (1, 1) would call the callback with the numbers 123, 4, 6,
+// 789. The 'skip' argument is used to skip the case where more than one digit of the number is
+// adjacent to the symbol.
+fn iterate_around_with_row_skip(
+    grid: &Grid<CellCharacter>,
+    numbers: &Grid<NumberAdjacent>,
+    (x, y): (usize, usize),
+) -> Vec<u32> {
+    let mut values = vec![];
+
+    for gy in y.saturating_sub(1)..=y + 1 {
+        let mut skip = false;
+
+        for gx in x.saturating_sub(1)..=x + 1 {
+            // skip for the case where more than one digit of the number is adjacent to the
+            // symbol, e.g.
+            //
+            // 394
+            //  *
+            //
+            // In this case, the numbers grid will contain 394 three times adjacent to *,
+            // but only one instance should be included.
+            if skip {
+                match grid.get(gx, gy).unwrap() {
+                    CellCharacter::Symbol(_) | CellCharacter::Empty => {
+                        skip = false;
+                    }
+                    _ => {}
+                }
+
+                continue;
+            }
+
+            if let NumberAdjacent::Some(n) = numbers.get(gx, gy).unwrap_or(&NumberAdjacent::None) {
+                skip = true;
+                values.push(*n);
+            }
+        }
+    }
+
+    values
+}
+
 pub fn part_one(input: &str) -> Option<u32> {
     let (grid, symbols, numbers) = parse(input, |_| true);
     println!("{}", numbers);
     println!("{}", symbols);
 
-    let mut engine_parts = vec![];
-
-    for ((x, y), cell) in &grid {
-        if let CellCharacter::Symbol(_) = cell {
-            for gy in y.saturating_sub(1)..=y + 1 {
-                let mut skip = false;
-
-                for gx in x.saturating_sub(1)..=x + 1 {
-                    // skip for the case where more than one digit of the number is adjacent to the
-                    // symbol, e.g.
-                    //
-                    // 394
-                    //  *
-                    //
-                    // In this case, the numbers grid will contain 394 three times adjacent to *,
-                    // but only one instance should be included.
-                    if skip {
-                        match grid.get(gx, gy).unwrap() {
-                            CellCharacter::Symbol(_) | CellCharacter::Empty => {
-                                skip = false;
-                            }
-                            _ => {}
-                        }
-
-                        continue;
-                    }
-
-                    if let NumberAdjacent::Some(n) =
-                        numbers.get(gx, gy).unwrap_or(&NumberAdjacent::None)
-                    {
-                        engine_parts.push(*n);
-                        skip = true;
-                    }
-                }
+    grid.iter()
+        .filter(|(_, cell)| {
+            if let &CellCharacter::Symbol(_) = cell {
+                true
+            } else {
+                false
             }
-        }
-    }
-
-    Some(engine_parts.iter().sum())
+        })
+        .flat_map(|((x, y), _)| iterate_around_with_row_skip(&grid, &numbers, (x, y)))
+        .sum::<u32>()
+        .into()
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
@@ -181,43 +222,14 @@ pub fn part_two(input: &str) -> Option<u32> {
 
     grid.iter()
         .filter(|(_, s)| *s == CellCharacter::Symbol('*'))
-        .filter_map(|((x, y), _)| {
-            let mut gear1 = None;
-            let mut gear_ratio = None;
-
-            for gy in y.saturating_sub(1)..=y + 1 {
-                let mut skip = false;
-
-                for gx in x.saturating_sub(1)..=x + 1 {
-                    if skip {
-                        match grid.get(gx, gy).unwrap() {
-                            CellCharacter::Symbol(_) | CellCharacter::Empty => {
-                                skip = false;
-                            }
-                            _ => {}
-                        }
-
-                        continue;
-                    }
-
-                    if let NumberAdjacent::Some(n) =
-                        numbers.get(gx, gy).unwrap_or(&NumberAdjacent::None)
-                    {
-                        skip = true;
-
-                        if gear1.is_none() {
-                            gear1 = Some(n);
-                        } else if gear_ratio.is_none() {
-                            gear_ratio = Some(gear1.unwrap() * n);
-                        } else {
-                            // More than two adjacent numbers, so cannot be a gear.
-                            return None;
-                        }
-                    }
-                }
+        .map(|((x, y), _)| iterate_around_with_row_skip(&grid, &numbers, (x, y)))
+        .filter_map(|gears| {
+            // Exactly two gears must be adjacent for it to be a gear
+            if gears.len() == 2 {
+                Some(gears.iter().product::<u32>())
+            } else {
+                None
             }
-
-            gear_ratio
         })
         .sum::<u32>()
         .into()
