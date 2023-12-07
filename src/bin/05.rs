@@ -11,28 +11,6 @@ struct Range {
     destination_start: u64,
 }
 
-impl Range {
-    fn try_map_value(&self, source: u64) -> Option<u64> {
-        if self.source_start <= source && source < self.source_start + self.length {
-            let offset = source - self.source_start;
-            Some(self.destination_start + offset)
-        } else {
-            None
-        }
-    }
-
-    fn try_map_from_result(&self, destination: u64) -> Option<u64> {
-        if self.destination_start <= destination
-            && destination < self.destination_start + self.length
-        {
-            let offset = destination - self.destination_start;
-            Some(self.source_start + offset)
-        } else {
-            None
-        }
-    }
-}
-
 fn map_range(input: &str) -> Range {
     let parts = input
         .split_whitespace()
@@ -62,7 +40,6 @@ trait LookupRange {
 // to map using the identity function, is indeed the case).
 trait ReverseLookupRange {
     fn find_for_image(&self, destination: u64) -> Option<Range>;
-    fn reverse_mapped_value(&self, destination: u64) -> u64;
 }
 
 impl LookupRange for Vec<Range> {
@@ -72,6 +49,8 @@ impl LookupRange for Vec<Range> {
         })
     }
 
+    // mapped_value tries to find a range that will map the provided source to an output, otherwise
+    // it maps the value using the identity function, returning itself.
     fn mapped_value(&self, source: u64) -> u64 {
         if let Some(range) = self.find_for_domain(source) {
             let offset = source - range.source_start;
@@ -119,15 +98,6 @@ impl ReverseLookupRange for Vec<Range> {
                 })
             })
     }
-
-    fn reverse_mapped_value(&self, destination: u64) -> u64 {
-        if let Some(range) = self.find_for_image(destination) {
-            let offset = destination - range.destination_start;
-            range.source_start + offset
-        } else {
-            destination
-        }
-    }
 }
 
 fn parse(input: &str) -> (Vec<u64>, Vec<Vec<Range>>) {
@@ -163,12 +133,7 @@ fn parse(input: &str) -> (Vec<u64>, Vec<Vec<Range>>) {
 fn solve(seeds: Vec<u64>, maps: Vec<Vec<Range>>) -> u64 {
     seeds
         .iter()
-        .map(|seed| {
-            maps.iter().fold(*seed, |acc, map| {
-                let mapped = map.mapped_value(acc);
-                mapped
-            })
-        })
+        .map(|seed| maps.iter().fold(*seed, |acc, map| map.mapped_value(acc)))
         .min()
         .unwrap()
 }
@@ -178,6 +143,38 @@ pub fn part_one(input: &str) -> Option<u64> {
     Some(solve(seeds, maps))
 }
 
+// The idea in part 2 is to prune the search space of input seeds to only those seeds that could
+// possibly provide a minimum location value. This initially felt intuitive to me, but initially I
+// tried to do this via some sort of meta method by splitting the ranges in each mapping itself
+// whereever a map had a range boundary that overlapped with a range in the next map. This was more
+// complex than desired, until I realised this would be far simpler if I simply considered possible
+// candidate values and inverted these in reverse order. Attempting to brute force based on the
+// initial set of seeds will simply take too long to solve.
+//
+// To prune the search space, we consider that each mapping is a piecewise linear function over the
+// domain of integers, formed by the re-mapped ranges given in the problem input, and by the
+// identity function for other values that are not re-mapped. I assume that the function for each
+// map is a bijection; the identity function is trivially bijective, and I assume based on context
+// and puzzle description that the re-mapped ranges follow this definition. (It is given that the
+// combination of ranges and identity function is an injective function on the integers, by
+// definition. I am assuming that the re-mappinged ranges are surjective, i.e. that multiple
+// distinct input values will never be remapped to the same output values). With this assumption,
+// each mapping function is invertible, allowing us to reverse map output values onto their input
+// values.
+//
+// Intuitively, we can build a list of candidate seeds by looking at the output values of the
+// location mapping function and considering the boundaries of discontinuities, i.e. the start of
+// each range (including the ranges defined by the identity function).
+//
+// Using this candidate set, we can then invert the map to obtain the input values that map to
+// those output values. This process can be repeated, using this new candidate as the output from
+// the previous mapping function, being sure at each step to also include the boundaries of any
+// ranges that may not have been included in the inverted output values.
+//
+// Eventually, this produces a set of values that represent possible seed candidates. We can
+// intersect this with the provided seed ranges to prune candidates that are not possible, as no
+// input seeds are provided. The remaining seeds are tested as per part_one until a minimum is
+// found.
 pub fn part_two(input: &str) -> Option<u64> {
     let (seeds, maps) = parse(input);
 
@@ -196,64 +193,42 @@ pub fn part_two(input: &str) -> Option<u64> {
 
     let mut candidates = HashSet::new();
     candidates.insert(0);
-    candidates.insert(u64::MAX);
 
     fn range_to_endpoints(range: &Range) -> (u64, u64) {
-        (range.source_start, range.source_start + range.length - 1)
+        (
+            range.source_start,
+            range.source_start.saturating_add(range.length),
+        )
     }
 
     let seed_candidates = maps.iter().rev().fold(candidates, |codomain, map| {
-        {
-            let mut p = codomain.iter().collect::<Vec<_>>();
-            p.sort();
-        }
-
         let mut domain = HashSet::new();
-        domain.insert(0);
-        domain.insert(u64::MAX);
 
         // Invert the values from the previous map's domain, treating them as the codomain of
         // this map.
-        domain.extend(
-            codomain
-                .iter()
-                .filter(|&&v| v > 0 && v < u64::MAX)
-                .flat_map(|value| {
-                    let range = map.find_for_image(*value).unwrap();
-                    let (start, end) = range_to_endpoints(&range);
-                    let mapped_value = range.try_map_from_result(*value).unwrap();
-
-                    vec![start, end, mapped_value, start.saturating_sub(1), end + 1]
-                }),
-        );
+        domain.extend(codomain.iter().map(|value| {
+            let range = map.find_for_image(*value).unwrap();
+            let mapped_value = range.source_start + (*value - range.destination_start);
+            mapped_value
+        }));
 
         for (start, end) in map.iter().map(range_to_endpoints) {
-            domain.insert(start);
-            domain.insert(end);
-            domain.insert(start.saturating_sub(1));
-            domain.insert(end.saturating_add(1));
+            // Include the end of the range, because this represents the start of an implicit range
+            // mapped either by another range (whose start will be included in the possible minimum
+            // values set in the next iteration), or an implicit identity function mapped range.
+            domain.extend(vec![start, end]);
         }
-
-        domain.extend(codomain);
-        domain.remove(&(u64::MAX - 1));
 
         domain
     });
 
-    let mut s = seed_candidates.iter().collect::<Vec<_>>();
-    s.sort();
-
-    let mut possible_seeds = HashSet::new();
-    possible_seeds.extend(s.iter().filter_map(|&seed| {
-        seed_ranges
-            .find_for_domain(*seed)
-            .map(|range| range.try_map_value(*seed).unwrap())
-    }));
-
     Some(solve(
-        possible_seeds
-            .into_iter()
-            .filter(|&seed| seed > 0)
+        seed_candidates
+            .iter()
+            // Remove seed candidates outside the eligible ranges, as these cannot produce a
+            // minimum location value.
+            .filter(|&&seed| seed_ranges.find_for_domain(seed).is_some())
+            .cloned()
             .collect::<Vec<_>>(),
         maps,
     ))
