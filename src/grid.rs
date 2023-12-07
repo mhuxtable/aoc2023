@@ -1,9 +1,6 @@
-use std::fmt::{Debug, Display};
+use std::fmt::Display;
 
-pub struct Grid<T>
-where
-    T: Clone + Debug + Display,
-{
+pub struct Grid<T> {
     pub data: Vec<T>,
     pub width: usize,
     pub height: usize,
@@ -11,7 +8,7 @@ where
 
 impl<T> Grid<T>
 where
-    T: Clone + Debug + Display,
+    T: Clone,
 {
     pub fn new(default: T, width: usize, height: usize) -> Self {
         let data = vec![default; width * height];
@@ -66,7 +63,7 @@ where
 
 impl<T> std::fmt::Display for Grid<T>
 where
-    T: Clone + Debug + Display,
+    T: Clone + Display,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for ((x, _), value) in self {
@@ -81,10 +78,7 @@ where
     }
 }
 
-pub struct GridIterator<'a, T>
-where
-    T: Clone + Debug + Display,
-{
+pub struct GridIterator<'a, T> {
     grid: &'a Grid<T>,
     x: usize,
     y: usize,
@@ -92,7 +86,7 @@ where
 
 impl<'a, T> Iterator for GridIterator<'a, T>
 where
-    T: Clone + Debug + Display,
+    T: Clone,
 {
     type Item = ((usize, usize), T);
 
@@ -115,10 +109,7 @@ where
     }
 }
 
-pub struct GridIntoIterator<'a, T>
-where
-    T: Clone + Debug + Display,
-{
+pub struct GridIntoIterator<'a, T> {
     grid: &'a Grid<T>,
     x: usize,
     y: usize,
@@ -126,7 +117,7 @@ where
 
 impl<'a, T> Iterator for GridIntoIterator<'a, T>
 where
-    T: Clone + Debug + Display,
+    T: Clone,
 {
     type Item = ((usize, usize), T);
 
@@ -151,7 +142,7 @@ where
 
 impl<'a, T> IntoIterator for &'a Grid<T>
 where
-    T: Clone + Debug + Display,
+    T: Clone,
 {
     type Item = ((usize, usize), T);
     type IntoIter = GridIntoIterator<'a, T>;
