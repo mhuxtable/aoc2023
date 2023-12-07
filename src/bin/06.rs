@@ -1,16 +1,19 @@
 advent_of_code::solution!(6);
 
-fn solve(input: &str, strip_input_chars: Vec<char>) -> u32 {
+fn solve(input: &str, strip_spaces: bool) -> u32 {
     let races = {
         let mut lines = input.lines();
 
-        let parse = move |s: &str| -> Vec<u64> {
-            s.trim()
+        let mut parse = move || -> Vec<u64> {
+            lines
+                .next()
+                .unwrap()
+                .trim()
                 .split_once(":")
                 .unwrap()
                 .1
                 .chars()
-                .filter(|c| !strip_input_chars.contains(c))
+                .filter(|c| !strip_spaces || *c != ' ')
                 .chain(std::iter::once(' '))
                 .fold((vec![], 0u64), |(mut ns, n), c| {
                     if let Some(digit) = c.to_digit(10) {
@@ -27,7 +30,8 @@ fn solve(input: &str, strip_input_chars: Vec<char>) -> u32 {
                 .0
         };
 
-        let (times, distances) = (parse(lines.next().unwrap()), parse(lines.next().unwrap()));
+        let times = parse();
+        let distances = parse();
 
         times
             .into_iter()
@@ -51,11 +55,11 @@ fn solve(input: &str, strip_input_chars: Vec<char>) -> u32 {
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
-    Some(solve(input, vec![]))
+    Some(solve(input, false))
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    Some(solve(input, vec![' ']))
+    Some(solve(input, true))
 }
 
 #[cfg(test)]
