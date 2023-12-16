@@ -61,6 +61,36 @@ where
     }
 }
 
+impl<T> Grid<T>
+where
+    T: Clone + Default + From<char>,
+{
+    // parse assumes the grid is rectangular with constant width
+    pub fn parse(input: &str) -> Result<Self, String> {
+        let (width, height) =
+            input
+                .lines()
+                .try_fold((None, 0), |(width, height), line| match width {
+                    Some(x) if x != line.len() => Err("grid is not rectangular"),
+                    _ => Ok((Some(line.len()), height + 1)),
+                })?;
+
+        if width.is_none() {
+            return Err("grid is empty".to_string());
+        }
+
+        let mut grid = Self::new(Default::default(), width.unwrap(), height);
+
+        for (y, line) in input.lines().enumerate() {
+            for (x, character) in line.chars().enumerate() {
+                grid.set(x, y, T::from(character));
+            }
+        }
+
+        Ok(grid)
+    }
+}
+
 impl<T> std::fmt::Display for Grid<T>
 where
     T: Clone + Display,
