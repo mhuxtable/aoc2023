@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use advent_of_code::Grid;
 use itertools::Itertools;
 
@@ -56,81 +58,101 @@ where
     }
 }
 
-pub fn part_one(input: &str) -> Option<u32> {
-    // for part 1, we just expand rows and cols in situ, using memory for efficiency
+trait GalaxyExt {
+    fn galaxies(&self) -> Vec<(usize, usize)>;
+}
 
-    let grid = {
-        // grid is a temporary, before we expand it into new_grid
-        let grid: Grid<Cell> = Grid::parse(input).unwrap();
-
-        let empty_rows = (0..grid.height())
-            .filter(|y| (0..grid.width()).all(|x| grid.get(x, *y).unwrap() == &Cell::Empty))
-            .collect::<Vec<_>>();
-
-        let empty_cols = (0..grid.width())
-            .filter(|x| (0..grid.height()).all(|y| grid.get(*x, y).unwrap() == &Cell::Empty))
-            .collect::<Vec<_>>();
-
-        let mut new_grid = Grid::new(
-            Cell::Empty,
-            grid.width() + empty_cols.len(),
-            grid.height() + empty_rows.len(),
-        );
-
-        let (mut x_offset, mut y_offset) = (0, 0);
-
-        for y in 0..grid.height() {
-            if empty_rows.contains(&y) {
-                y_offset += 1;
-                continue;
-            }
-
-            for x in 0..grid.width() {
-                if empty_cols.contains(&x) {
-                    x_offset += 1;
-                    continue;
+impl GalaxyExt for Grid<Cell> {
+    fn galaxies(&self) -> Vec<(usize, usize)> {
+        self.iter()
+            .filter_map(|(point, cell)| {
+                if cell == Cell::Galaxy {
+                    Some(point)
+                } else {
+                    None
                 }
+            })
+            .collect::<Vec<_>>()
+    }
+}
 
-                new_grid.set(x + x_offset, y + y_offset, *grid.get(x, y).unwrap());
-            }
-
-            x_offset = 0;
-        }
-
-        new_grid
-    };
-
-    let galaxies = grid
-        .iter()
-        .filter_map(|(point, cell)| {
-            if cell == Cell::Galaxy {
-                Some(point)
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<_>>();
-
-    // compute the manhattan distance for each galaxy pair. It shows this as diagonal in the
-    // exercise but manhattan is simpler and equivalent
+fn galaxy_pairwise_distances<CoordMapFn: Fn(&(usize, usize)) -> (usize, usize)>(
+    galaxies: &[(usize, usize)],
+    mapper: CoordMapFn,
+) -> Vec<u64> {
     galaxies
         .iter()
         .tuple_combinations()
         .map(|(a, b)| {
-            let (x1, y1) = a;
-            let (x2, y2) = b;
+            let (x1, y1) = mapper(a);
+            let (x2, y2) = mapper(b);
 
-            ((*x1 as i32 - *x2 as i32).abs() + (*y1 as i32 - *y2 as i32).abs()) as u32
+            println!("originally: ({}, {}) -> ({}, {})", a.0, a.1, b.0, b.1);
+            println!("mapped: ({}, {}) -> ({}, {})", x1, y1, x2, y2);
+
+            ((x1 as i64 - x2 as i64).abs() + (y1 as i64 - y2 as i64).abs()) as u64
         })
-        .sum::<u32>()
-        .into()
+        .collect::<Vec<_>>()
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    // for part two, for each row/column we need to expand, we just maintain a mapping of the
-    // original input coordinates to the expanded galaxy coordinates, to avoid excessive memory
-    // use.
+pub fn part_one(input: &str) -> Option<u32> {
+    // 2 because we double the size of all the space. This distinction is important in part 2 where
+    // it is a replacement by 1_000_000 times, not adding 1m rows/cols.
+    Some(compute_with_expansion(input, 2) as u32)
+}
+
+// big numbers: this one overflows a u32
+fn part_two(input: &str) -> Option<u64> {
+    Some(compute_with_expansion(input, 1_000_000))
+}
+
+fn compute_with_expansion(input: &str, expansion_size: usize) -> u64 {
     let grid: Grid<Cell> = Grid::parse(input).unwrap();
+
+    // let mut x_map = HashMap::new();
+    // (0..grid.width()).for_each(|x| {
+    //     x_map.insert(x, x);
+    // });
+    // let mut y_map = HashMap::new();
+    // (0..grid.height()).for_each(|y| {
+    //     y_map.insert(y, y);
+    // });
+
+    let empty_rows = grid.empty_rows();
+    let empty_cols = grid.empty_cols();
+
+    // empty_cols.iter().for_each(|x| {
+    //     x_map.iter_mut().for_each(|(k, v)| {
+    //         if *k > *x {
+    //             *v += expansion_size;
+    //         }
+    //     });
+    // });
+
+    // empty_rows.iter().for_each(|y| {
+    //     y_map.iter_mut().for_each(|(k, v)| {
+    //         if *k > *y {
+    //             *v += expansion_size;
+    //         }
+    //     });
+    // });
+
+    dbg!(&empty_rows, &empty_cols);
+    // dbg!(&x_map);
+
+    let galaxies = grid.galaxies();
+
+    galaxy_pairwise_distances(&galaxies, |&(x, y)| {
+        let empty_cols = empty_cols.iter().filter(|&&c| c < x).count();
+        let empty_rows = empty_rows.iter().filter(|&&r| r < y).count();
+
+        (
+            x + (empty_cols * (expansion_size - 1)) as usize,
+            y + (empty_rows * (expansion_size - 1)) as usize,
+        )
+    })
+    .iter()
+    .sum::<u64>()
 }
 
 #[cfg(test)]
@@ -145,7 +167,14 @@ mod tests {
 
     #[test]
     fn test_part_two() {
-        let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        [(10, 1030), (100, 8410)]
+            .iter()
+            .for_each(|(expansion_size, expected)| {
+                let result = compute_with_expansion(
+                    &advent_of_code::template::read_file("examples", DAY),
+                    *expansion_size,
+                );
+                assert_eq!(result, *expected, "expansion size {}", expansion_size);
+            });
     }
 }
