@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use advent_of_code::Grid;
 use itertools::Itertools;
 
@@ -109,36 +107,8 @@ fn part_two(input: &str) -> Option<u64> {
 fn compute_with_expansion(input: &str, expansion_size: usize) -> u64 {
     let grid: Grid<Cell> = Grid::parse(input).unwrap();
 
-    // let mut x_map = HashMap::new();
-    // (0..grid.width()).for_each(|x| {
-    //     x_map.insert(x, x);
-    // });
-    // let mut y_map = HashMap::new();
-    // (0..grid.height()).for_each(|y| {
-    //     y_map.insert(y, y);
-    // });
-
     let empty_rows = grid.empty_rows();
     let empty_cols = grid.empty_cols();
-
-    // empty_cols.iter().for_each(|x| {
-    //     x_map.iter_mut().for_each(|(k, v)| {
-    //         if *k > *x {
-    //             *v += expansion_size;
-    //         }
-    //     });
-    // });
-
-    // empty_rows.iter().for_each(|y| {
-    //     y_map.iter_mut().for_each(|(k, v)| {
-    //         if *k > *y {
-    //             *v += expansion_size;
-    //         }
-    //     });
-    // });
-
-    dbg!(&empty_rows, &empty_cols);
-    // dbg!(&x_map);
 
     let galaxies = grid.galaxies();
 
