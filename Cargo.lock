@@ -25,6 +25,7 @@ dependencies = [
  "itertools",
  "lazy_static",
  "pico-args",
+ "regex",
 ]
 
 [[package]]
