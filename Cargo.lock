@@ -23,6 +23,7 @@ version = "0.9.3"
 dependencies = [
  "aoc-cli",
  "itertools",
+ "lazy_static",
  "pico-args",
 ]
 
