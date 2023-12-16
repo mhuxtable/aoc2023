@@ -33,6 +33,7 @@ fn solve(input: &str) -> Vec<Vec<(Vec<i32>, bool)>> {
                 diff_seqs.push((diff_seq, zero));
             }
 
+            #[cfg(debug_assertions)]
             println!(
                 "{}",
                 diff_seqs
@@ -64,6 +65,7 @@ pub fn part_one(input: &str) -> Option<i32> {
                 this_diff
             });
 
+            #[cfg(debug_assertions)]
             println!("next: {}\n", next);
 
             next
@@ -85,6 +87,7 @@ pub fn part_two(input: &str) -> Option<i32> {
                 this_diff
             });
 
+            #[cfg(debug_assertions)]
             println!("0th: {}\n", zeroth);
 
             zeroth

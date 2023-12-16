@@ -168,6 +168,7 @@ fn parse(input: &str) -> (Grid<FieldCell>, (usize, usize)) {
         }
     }
 
+    #[cfg(debug_assertions)]
     println!("{}", grid);
 
     (grid, start.unwrap())

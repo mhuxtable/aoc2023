@@ -116,6 +116,7 @@ pub fn part_two(input: &str) -> Option<u64> {
         })
         .collect::<Vec<_>>();
 
+    #[cfg(debug_assertions)]
     println!("cycle lengths: {:?}", cycle_length);
 
     Some(

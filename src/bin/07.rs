@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use std::{collections::HashMap, error::Error, fmt::Display, str::FromStr};
+use std::{collections::HashMap, fmt::Display};
 
 advent_of_code::solution!(7);
 
@@ -284,9 +284,10 @@ pub fn part_two(input: &str) -> Option<u32> {
             .iter()
             .sorted_by(|(a, _), (b, _)| sort_hands(a, b).unwrap())
             .enumerate()
-            .inspect(|(_, (hand, _))| {
-                if hand.0.contains(&Card::Joker) {
-                    println!("{:?}", hand);
+            .inspect(|(_, (_hand, _))| {
+                #[cfg(debug_assertions)]
+                if _hand.0.contains(&Card::Joker) {
+                    println!("{:?}", _hand);
                 }
             })
             .map(|(i, (_, bid))| bid * (i as u32 + 1))

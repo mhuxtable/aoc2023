@@ -200,9 +200,12 @@ fn iterate_around_with_row_skip(
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
-    let (grid, symbols, numbers) = parse(input, |_| true);
-    println!("{}", numbers);
-    println!("{}", symbols);
+    let (grid, _symbols, numbers) = parse(input, |_| true);
+    #[cfg(debug_assertions)]
+    {
+        println!("{}", numbers);
+        println!("{}", _symbols);
+    }
 
     grid.iter()
         .filter(|(_, cell)| {

@@ -85,8 +85,11 @@ fn galaxy_pairwise_distances<CoordMapFn: Fn(&(usize, usize)) -> (usize, usize)>(
             let (x1, y1) = mapper(a);
             let (x2, y2) = mapper(b);
 
-            println!("originally: ({}, {}) -> ({}, {})", a.0, a.1, b.0, b.1);
-            println!("mapped: ({}, {}) -> ({}, {})", x1, y1, x2, y2);
+            #[cfg(debug_assertions)]
+            {
+                println!("originally: ({}, {}) -> ({}, {})", a.0, a.1, b.0, b.1);
+                println!("mapped: ({}, {}) -> ({}, {})", x1, y1, x2, y2);
+            }
 
             ((x1 as i64 - x2 as i64).abs() + (y1 as i64 - y2 as i64).abs()) as u64
         })
