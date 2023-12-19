@@ -123,10 +123,4 @@ mod tests {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
         assert_eq!(result, Some(525152));
     }
-
-    #[test]
-    fn test_individual_part_2() {
-        let input = &advent_of_code::template::read_file("examples", DAY);
-        assert_eq!(result, Some(525152));
-    }
 }
