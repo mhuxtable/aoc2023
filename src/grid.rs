@@ -66,9 +66,10 @@ where
     T: Clone + Default + From<char>,
 {
     // parse assumes the grid is rectangular with constant width
-    pub fn parse(input: &str) -> Result<Self, String> {
+    pub fn parse<Input: AsRef<str>>(input: Input) -> Result<Self, String> {
         let (width, height) =
             input
+                .as_ref()
                 .lines()
                 .try_fold((None, 0), |(width, height), line| match width {
                     Some(x) if x != line.len() => Err("grid is not rectangular"),
@@ -81,7 +82,7 @@ where
 
         let mut grid = Self::new(Default::default(), width.unwrap(), height);
 
-        for (y, line) in input.lines().enumerate() {
+        for (y, line) in input.as_ref().lines().enumerate() {
             for (x, character) in line.chars().enumerate() {
                 grid.set(x, y, T::from(character));
             }
