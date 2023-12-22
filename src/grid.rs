@@ -48,6 +48,31 @@ where
         }
     }
 
+    pub fn neighbours(&self, (x, y): (usize, usize)) -> Vec<((usize, usize), &T)> {
+        assert!(x < self.width);
+        assert!(y < self.height);
+
+        let mut neighbours = Vec::new();
+
+        if x > 0 {
+            neighbours.push(((x - 1, y), self.get(x - 1, y).unwrap()));
+        }
+
+        if y > 0 {
+            neighbours.push(((x, y - 1), self.get(x, y - 1).unwrap()));
+        }
+
+        if x < self.width - 1 {
+            neighbours.push(((x + 1, y), self.get(x + 1, y).unwrap()));
+        }
+
+        if y < self.height - 1 {
+            neighbours.push(((x, y + 1), self.get(x, y + 1).unwrap()));
+        }
+
+        neighbours
+    }
+
     pub fn set(&mut self, x: usize, y: usize, value: T) {
         if x >= self.width || y >= self.height {
             panic!("out of range");
@@ -101,6 +126,48 @@ where
             write!(f, "{}", value)?;
 
             if x == self.width - 1 {
+                writeln!(f)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl<T> Grid<T>
+where
+    T: Clone + Display,
+{
+    pub fn fmt_with_overrides<'a, F: Fn(&(usize, usize)) -> Option<char> + 'a>(
+        &'a self,
+        overrides: F,
+    ) -> OverriddenFormatter<'a, T, F> {
+        OverriddenFormatter {
+            grid: self,
+            overrides,
+        }
+    }
+}
+
+pub struct OverriddenFormatter<'a, T, F: Fn(&(usize, usize)) -> Option<char>> {
+    grid: &'a Grid<T>,
+    overrides: F,
+}
+
+impl<T, F> Display for OverriddenFormatter<'_, T, F>
+where
+    T: Clone + Display,
+    F: Fn(&(usize, usize)) -> Option<char>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for ((x, y), value) in self.grid {
+            if let Some(override_char) = (self.overrides)(&(x, y)) {
+                write!(f, "{}", override_char)?;
+            } else {
+                write!(f, "{}", value)?;
+            }
+
+            if x == self.grid.width - 1 {
                 writeln!(f)?;
             }
         }
