@@ -4,12 +4,24 @@ use priority_queue::PriorityQueue;
 
 advent_of_code::solution!(17);
 
+/// get_losses runs a Dijkstra's algorithm (another word that's hard to type in vim with jk mapped
+/// to <ESC>) to find the minimum distance from start to finish. The algorithm is modified to track
+/// additional state to accommodate the wagons' movement rules: state is stored for each grid cell,
+/// for each possible number of steps possibly spent accessing it, and for each possible direction
+/// of access that can be used (modelled as 0 to 3 as principal ordinal directions starting north
+/// and moving clockwise).
+///
+/// To accommodate the possibility that wagons must move a minimum distance before turning, this
+/// supports additionally passing a minimum number of steps. The movement rules are given as a
+/// half-open interval, i.e. [min, max) where max is the total number of steps that can be taken
+/// without turning, plus one.
 fn get_losses(grid: &Grid<u32>, (min, max): (usize, usize)) -> u32 {
     let mut fringe = PriorityQueue::new();
 
     // distance is a 1D array, where for each grid cell we have 16 states - 4 steps, with 4
     // directions each. Lookup is 16 * (y * width + x) + 4 * steps + direction (for part 1,
-    // since there are max == 4 and 4 directions each - generalise to 4 * max for part 2).
+    // since there are max == 4 and 4 directions each - generalise to 4 * max for part 2 where an
+    // arbitrary number of possible states is possible).
     let mut dist = vec![u32::MAX; (4 * max) * grid.width() * grid.height()];
     let mut prev = vec![None; (4 * max) * grid.width() * grid.height()];
 
