@@ -48,7 +48,7 @@ where
         }
     }
 
-    pub fn neighbours(&self, (x, y): (usize, usize)) -> Vec<((usize, usize), &T)> {
+    pub fn neighbours(&self, &(x, y): &(usize, usize)) -> Vec<((usize, usize), &T)> {
         assert!(x < self.width);
         assert!(y < self.height);
 
@@ -92,6 +92,18 @@ where
 {
     // parse assumes the grid is rectangular with constant width
     pub fn parse<Input: AsRef<str>>(input: Input) -> Result<Self, String> {
+        Self::parse_with_parser(input, |character| character.into())
+    }
+}
+
+impl<T> Grid<T>
+where
+    T: Clone + Default,
+{
+    pub fn parse_with_parser<Input: AsRef<str>, Parser: Fn(char) -> T>(
+        input: Input,
+        parser: Parser,
+    ) -> Result<Self, String> {
         let (width, height) =
             input
                 .as_ref()
@@ -109,7 +121,7 @@ where
 
         for (y, line) in input.as_ref().lines().enumerate() {
             for (x, character) in line.chars().enumerate() {
-                grid.set(x, y, T::from(character));
+                grid.set(x, y, parser(character));
             }
         }
 

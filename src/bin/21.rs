@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashSet, VecDeque},
-    fmt::Display,
-};
+use std::{collections::HashSet, fmt::Display};
 
 use advent_of_code::Grid;
 
@@ -55,7 +52,7 @@ fn solve_part_one(input: &str, needed_steps: usize) -> u32 {
 
     for _ in 0..needed_steps {
         for coord in q.drain() {
-            for (next_coord, next_cell) in grid.neighbours(coord) {
+            for (next_coord, next_cell) in grid.neighbours(&coord) {
                 if next_cell == &Cell::Rocks {
                     continue;
                 }
