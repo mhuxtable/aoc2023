@@ -92,15 +92,16 @@ where
 {
     // parse assumes the grid is rectangular with constant width
     pub fn parse<Input: AsRef<str>>(input: Input) -> Result<Self, String> {
-        Self::parse_with_parser(input, |character| character.into())
+        Self::parse_with_parser(Default::default(), input, |character| character.into())
     }
 }
 
 impl<T> Grid<T>
 where
-    T: Clone + Default,
+    T: Clone,
 {
     pub fn parse_with_parser<Input: AsRef<str>, Parser: Fn(char) -> T>(
+        default: T,
         input: Input,
         parser: Parser,
     ) -> Result<Self, String> {
@@ -117,7 +118,7 @@ where
             return Err("grid is empty".to_string());
         }
 
-        let mut grid = Self::new(Default::default(), width.unwrap(), height);
+        let mut grid = Self::new(default, width.unwrap(), height);
 
         for (y, line) in input.as_ref().lines().enumerate() {
             for (x, character) in line.chars().enumerate() {
